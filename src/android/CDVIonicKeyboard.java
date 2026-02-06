@@ -10,6 +10,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import android.content.Context;
+import android.content.pm.PackageInfo;
 import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import android.view.View;
@@ -22,7 +23,10 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.Display;
 import android.graphics.Point;
 import android.os.Build;
+import android.webkit.WebView;
 import android.widget.FrameLayout;
+
+import timber.log.Timber;
 
 public class CDVIonicKeyboard extends CordovaPlugin {
     private OnGlobalLayoutListener list;
@@ -80,8 +84,18 @@ public class CDVIonicKeyboard extends CordovaPlugin {
                         public void onGlobalLayout() {
                             boolean resize = preferences.getBoolean("resizeOnFullScreen", false);
                             if (resize) {
-                                possiblyResizeChildOfContent();
+                                //DEV-23290 Fix for known behaviour of extra footer space with recent webviews updates (version 144)
+                                //https://issues.chromium.org/issues/459087298
+                                //TODO re-visit this if webview behavior changes in future
+                                boolean webViewVersionLowerThan144 = getWebViewVersion() < 144;
+                                if (webViewVersionLowerThan144) {
+                                    possiblyResizeChildOfContent();
+                                    Timber.d("Resize content on older webview");
+                                } else {                                  
+                                    Timber.d("Webview greater or equal 144, dont resize");
+                                }
                             }
+
                             Rect r = new Rect();
                             //r will be populated with the coordinates of your view that area still visible.
                             rootView.getWindowVisibleDisplayFrame(r);
@@ -157,6 +171,22 @@ public class CDVIonicKeyboard extends CordovaPlugin {
             return true;
         }
         return false;  // Returning false results in a "MethodNotFound" error.
+    }
+
+    private int getWebViewVersion() {
+        try {
+            PackageInfo pkg = WebView.getCurrentWebViewPackage();
+            if (pkg == null || pkg.versionName == null) {
+                Timber.w("WebView package/version unavailable");
+                return 0;
+            }
+            Timber.d("WebView → Version: %s, Code: %d, Package: %s",
+                pkg.versionName, pkg.versionCode, pkg.packageName);
+            return Integer.parseInt(pkg.versionName.split("\\.")[0]);
+        } catch (Exception e) {
+            Timber.e(e, "Failed to read WebView version");
+            return 0; // safe fallback
+        }
     }
 
     @Override
