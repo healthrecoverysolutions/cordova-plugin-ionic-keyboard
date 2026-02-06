@@ -84,13 +84,14 @@ public class CDVIonicKeyboard extends CordovaPlugin {
                         public void onGlobalLayout() {
                             boolean resize = preferences.getBoolean("resizeOnFullScreen", false);
                             if (resize) {
+                                //DEV-23290 Fix for known behaviour of extra footer space with recent webviews updates
+                                //https://issues.chromium.org/issues/459087298
+                                //TODO re-visit this if webview behavior changes in future
                                 boolean webViewVersionLowerThan144 = getWebViewVersion() < 144;
                                 if (webViewVersionLowerThan144) {
                                     possiblyResizeChildOfContent();
                                     Timber.d("Resize content on older webview");
-                                } else {
-                                    // Known behaviour of extra footer space with recent webviews issue DEV-23290
-                                    // https://issues.chromium.org/issues/459087298
+                                } else {                                  
                                     Timber.d("Webview greater or equal 144, dont resize");
                                 }
                             }
