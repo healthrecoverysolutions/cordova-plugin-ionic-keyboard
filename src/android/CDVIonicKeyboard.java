@@ -202,22 +202,6 @@ public class CDVIonicKeyboard extends CordovaPlugin {
         return false;  // Returning false results in a "MethodNotFound" error.
     }
 
-    private int getWebViewVersion() {
-        try {
-            PackageInfo pkg = WebView.getCurrentWebViewPackage();
-            if (pkg == null || pkg.versionName == null) {
-                Timber.w("WebView package/version unavailable");
-                return 0;
-            }
-            Timber.d("WebView → Version: %s, Code: %d, Package: %s",
-                pkg.versionName, pkg.versionCode, pkg.packageName);
-            return Integer.parseInt(pkg.versionName.split("\\.")[0]);
-        } catch (Exception e) {
-            Timber.e(e, "Failed to read WebView version");
-            return 0; // safe fallback
-        }
-    }
-
     @Override
     public void onDestroy() {
         rootView.getViewTreeObserver().removeOnGlobalLayoutListener(list);
