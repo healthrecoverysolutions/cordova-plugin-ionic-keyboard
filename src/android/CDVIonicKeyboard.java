@@ -1,5 +1,7 @@
 package io.ionic.keyboard;
 
+import static org.apache.cordova.BuildHelper.getBuildConfigValue;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -26,6 +28,10 @@ import android.os.Build;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
 import timber.log.Timber;
 
 public class CDVIonicKeyboard extends CordovaPlugin {
@@ -37,6 +43,38 @@ public class CDVIonicKeyboard extends CordovaPlugin {
 
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
+    }
+
+    @Override
+    protected void pluginInitialize() {
+        super.pluginInitialize();
+        Boolean isKnoxManage = (Boolean) getBuildConfigValue(cordova.getContext(), "KNOXMANAGE");
+        if (Boolean.TRUE.equals(isKnoxManage)) { //only PCMT
+            Timber.d("Applying system bar insets");
+            setSystemBarInsets();
+        }
+    }
+
+    /**
+     * Applies a custom WindowInsets handling strategy to the activity root view in order to fix the common extra footer gap issue.
+     * In edge-to-edge Android layouts, both the system and the WebView may apply bottom safe-area padding.
+     * This results in unwanted empty space beneath fixed footers. This method ensures insets are handled exactly once.
+     */
+    private void setSystemBarInsets() {
+        View content = cordova.getActivity().findViewById(android.R.id.content);
+        ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
+
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            v.setPadding(
+                systemBars.left,
+                systemBars.top,
+                systemBars.right,
+                0 // applying only to system nav bars and not the whole app
+            );
+
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
@@ -84,16 +122,7 @@ public class CDVIonicKeyboard extends CordovaPlugin {
                         public void onGlobalLayout() {
                             boolean resize = preferences.getBoolean("resizeOnFullScreen", false);
                             if (resize) {
-                                //DEV-23290 Fix for known behaviour of extra footer space with recent webviews updates (version 144)
-                                //https://issues.chromium.org/issues/459087298
-                                //TODO re-visit this if webview behavior changes in future
-                                boolean webViewVersionLowerThan144 = getWebViewVersion() < 144;
-                                if (webViewVersionLowerThan144) {
-                                    possiblyResizeChildOfContent();
-                                    Timber.d("Resize content on older webview");
-                                } else {                                  
-                                    Timber.d("Webview greater or equal 144, dont resize");
-                                }
+                                possiblyResizeChildOfContent();
                             }
 
                             Rect r = new Rect();
